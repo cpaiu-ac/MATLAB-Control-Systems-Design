@@ -1,0 +1,147 @@
+clear all;clc
+
+%%problema 1
+
+h1 = tf(10, 1);
+h2 = tf(-1, [0.1, 1]);
+h3 = tf(-1, 1);
+h4 = tf(50, [1, 0]);
+h5 = tf(0.005, 1);
+h6 = tf(-1, 1);
+h7 = tf(10,1);
+
+fwd = h2 * h3;
+fwd = fwd * h4;
+fwd = fwd * h5;
+
+bck = h7 * h6;
+
+bucla = feedback(fwd, bck, +1);
+sys = h1 * bucla;
+
+sys_curat = minreal(sys);
+sys_ss = ss(sys_curat);
+
+[A, B, C, D] = ssdata(sys_ss)
+
+%% problema 2, a
+
+t = 0 : 0.01 : 5;
+[y, t, x] = step(sys_ss, t);
+figure
+plot(t, y); %variatia iesirii
+plot(t, x); %varitia starilor
+
+u = zeros(size(t));
+
+%% problema 2, b
+
+t = 0 : 0.01 : 12;
+u = zeros(size(t));
+for k = 1 : length(t)
+    if t(k) <= 3
+        u(k) = t(k);
+    elseif t(k) <= 6
+        u(k) = 3
+    elseif t(k) <= 9
+        u(k) = 9 - t(k);
+    else 
+        u(k) = 0;
+    end
+end
+[y, x] = lsim(sys_ss, u, t);
+figure;
+plot(t, u);
+plot(t, y);
+
+%% problema 3, a
+
+A = [-10 0.5; -50 0];
+B = [-100; 0];
+C = [0 0.005];
+D = 0;
+sys = ss(A, B, C, D);
+x0 = [1 1];
+t = 0 : 0.01 : 5;
+[y, t, x] = initial(sys, x0, t);
+
+figure
+plot(t, x);
+
+%% problema 5, a
+
+R_val = 0.5;
+a = 800;
+T1 = 20;
+T2 = 5;
+T3 = 2;
+
+H3 = tf(1, [T3 1]);
+H2 = tf(1, [T2 1]);
+H1 = tf(a, [T1 1]);
+
+H_bucla_deschisa = series(H3, series(H2, H1));
+[A, B, C, D] = ssdata(H_bucla_deschisa);
+
+%% problema 5, b
+
+sigma = 0.05;
+tr = 10;
+zeta = abs(log(sigma));
+wn = 4 / (zeta * tr);
+p1 = -zeta * wn + 1i * wn * sqrt(1 - zeta ^ 2);
+p2 = -zeta * wn - 1i * wn * sqrt(1 - zeta ^ 2);
+p3= -5 * real(p1);
+
+P = [p1 p2 p3];
+
+K = place(A, B, P)
+
+s = size(A, 1);
+Z = [zeros([1, s]) 1];
+
+N = inv([A, B; C, D]) * Z';
+Nx = N(1 : s);
+Nu = N(1 + s);
+N_bar = Nu + K * Nx;
+
+%% problema 5, c
+
+sys_cl = ss(A - B * K, B * N_bar, C, D);
+
+figure;
+step(sys_cl);
+
+%% problema 6, a
+
+A = [-0.02 0 0.02; 0 -0.02 0.02; 0.02 0.02 -0.06];
+B = [100 0; 0 100; 0 0];
+C = [0 0 0.0002];
+D = 0;
+Co = ctrb(A, B);
+rank_Co = rank(Co);
+if rank_Co == length(A)
+    disp('Sistemul este complet controlabil.')
+else
+    disp('Sistemul NU este complet controlabil.');
+end
+Ob = obsv(A, C);
+rank_Ob = rank(Ob);
+if rank_Ob == length(A)
+    disp('Sistemul este complet observabil.');
+else
+    disp('Sistemul NU este complet observabil.')
+end
+
+%% problema 6, b
+
+[num, den] = ss2tf(A, B, C, D);
+H_tf = tf(num, den);
+
+valori_proprii = eig(A);
+
+if all(real(valori_proprii) < 0)
+    disp('Sistemul este asimptotic stabil.');
+else
+    disp('Sistemul este instabil.');
+end
